@@ -1,28 +1,35 @@
 #include "include/PPM.hpp"
+#include <cstdint>
 #include <functional>
 #include <iostream>
-#include <memory>
-#include <string>
 
 using namespace std::string_literals;
 using namespace pixel;
-using namespace pixel::color::color_literals;
 
 auto main() -> int {
   constexpr auto width = 1024;
   constexpr auto height = 1024;
-  ppm::Image<uint8_t> image{};
+  ppm::Image<uint16_t> image{};
   image.resize(width, height);
   {
-    image.drawFunc(std::bit_and<>{});
+    image.drawFunc([](int xPos, int yPos, ppm::Pixel<uint16_t> &pix) {
+      auto value = (xPos ^ yPos) << 8; // scale color a bit
+      pix = ppm::Pixel<uint16_t>{value, value, value};
+    });
     if (!image.save("bit_and.ppm")) {
       std::cerr << "Failed to save image\n";
     }
-    image.drawFunc(std::bit_or<>{});
+    image.drawFunc([](int xPos, int yPos, ppm::Pixel<uint16_t> &pix) {
+      auto value = (xPos | yPos) << 8; // scale color a bit
+      pix = ppm::Pixel<uint16_t>{value, value, value};
+    });
     if (!image.save("bit_or.ppm")) {
       std::cerr << "Failed to save image\n";
     }
-    image.drawFunc(std::bit_xor<>{});
+    image.drawFunc([](int xPos, int yPos, ppm::Pixel<uint16_t> &pix) {
+      auto value = (xPos | yPos) << 8; // scale color a bit
+      pix = ppm::Pixel<uint16_t>{value, value, value};
+    });
     if (!image.save("bit_xor.ppm")) {
       std::cerr << "Failed to save image\n";
     }

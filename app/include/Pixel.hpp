@@ -2,140 +2,31 @@
 #define PIXEL_HPP
 
 #include "Contracts.hpp"
+#include "Normalization.hpp"
+#include "Palette.hpp"
 #include <algorithm>
 #include <array>
-#include <cstddef>
-#include <iomanip>
-#include <ios>
-#include <limits>
 #include <ostream>
-#include <ranges>
-#include <stdfloat>
-#include <tuple>
-#include <type_traits>
-#include <utility>
+#include <iomanip>
 
 namespace pixel {
   using namespace contracts;
-  namespace color {
-
-    inline namespace color_literals {
-      constexpr auto operator"" _u8(const unsigned long long value) -> uint8_t {
-        return static_cast<uint8_t>(value);
-      }
-      constexpr auto operator"" _u16(const unsigned long long value)
-          -> uint16_t {
-        return static_cast<uint16_t>(value);
-      }
-
-      constexpr auto operator"" _u32(const unsigned long long value)
-          -> uint32_t {
-        return static_cast<uint32_t>(value);
-      }
-
-      constexpr auto operator"" _u64(const unsigned long long value)
-          -> uint64_t {
-        return value;
-      }
-
-      constexpr auto operator"" _f16(const long double value)
-          -> std::float16_t {
-        return static_cast<std::float16_t>(value);
-      }
-
-      constexpr auto operator"" _f32(const long double value)
-          -> std::float32_t {
-        return static_cast<std::float32_t>(value);
-      }
-
-      constexpr auto operator"" _f64(const long double value)
-          -> std::float64_t {
-        return static_cast<std::float64_t>(value);
-      }
-
-      constexpr auto operator"" _f128(const long double value)
-          -> std::float128_t {
-        return value;
-      }
-
-    } // namespace color_literals
-
-    template <IsFloatingPoint Tp, IsIntegral Up>
-    constexpr auto normalize(Up value) noexcept -> Tp {
-      return static_cast<Tp>(value) / std::numeric_limits<Up>::max();
-    }
-
-    template <IsIntegral Tp, IsFloatingPoint Up>
-    constexpr auto denormalize(Up value) noexcept -> Tp {
-      return static_cast<Tp>(value * std::numeric_limits<Tp>::max());
-    }
-
-    template <IsIntegral Rt, IsIntegral It>
-    constexpr auto scale(It value) noexcept -> Rt {
-      return static_cast<Rt>(normalize<long double>(value) *
-                             std::numeric_limits<Rt>::max());
-    }
-
-    template <IsIntegral Rt, IsFloatingPoint It>
-    constexpr auto cast(It value) noexcept -> Rt {
-      return denormalize<Rt>(value);
-    }
-
-    template <IsFloatingPoint Rt, IsIntegral It>
-    constexpr auto cast(It value) noexcept -> Rt {
-      return normalize<Rt>(value);
-    }
-
-    template <IsIntegral Rt, IsIntegral It>
-      requires(!std::is_same_v<Rt, It>)
-    constexpr auto cast(It value) noexcept -> Rt {
-      return scale<Rt>(value);
-    }
-
-    template <IsIntegral Rt, IsIntegral It>
-      requires std::is_same_v<Rt, It>
-    constexpr auto cast(It value) noexcept -> Rt {
-      return value;
-    }
-
-  } // namespace color
-
-  namespace colorspace {
-    constexpr auto RGB_N_CHANNELS = 3;
-    constexpr auto RGBA_N_CHANNELS = 4;
-
-    template <IsTag Tg> constexpr auto num_channels() noexcept -> std::size_t {
-      if constexpr (std::is_same_v<Tg, RGB>) {
-        return RGB_N_CHANNELS;
-      } else if constexpr (std::is_same_v<Tg, RGBA>) {
-        return RGBA_N_CHANNELS;
-      } else {
-        static_assert(is_tag_v<Tg>);
-      }
-    }
-
-    namespace rgba {
-      constexpr auto R = 0; // NOLINT
-      constexpr auto G = 1; // NOLINT
-      constexpr auto B = 2; // NOLINT
-      constexpr auto A = 3; // NOLINT
-    } // namespace rgba
-  } // namespace colorspace
+  using namespace palette;
+  using namespace palette::concepts;
 
   namespace detail {
 
-    using namespace colorspace;
-
     template <IsArithmetic Tp, IsTag Tg>
-    struct PixelBase : std::array<Tp, colorspace::num_channels<Tg>()> {
+    struct PixelBase : std::array<Tp, Palette<Tg>::CHANNELS> {
+      using ColorPalette = Palette<Tg>;
+
       PixelBase() noexcept = default;
 
       template <typename... Tps>
         requires((std::is_convertible_v<Tps, Tp> && ...) &&
-                 (sizeof...(Tps) == colorspace::num_channels<Tg>()))
+                 (sizeof...(Tps) == ColorPalette::CHANNELS))
       constexpr explicit PixelBase(Tps... args) noexcept
-          : std::array<Tp, colorspace::num_channels<Tg>()>{
-                static_cast<Tp>(args)...} {}
+          : std::array<Tp, ColorPalette::CHANNELS>{static_cast<Tp>(args)...} {}
 
       constexpr PixelBase(const PixelBase &) noexcept = default;
       constexpr PixelBase(PixelBase &&) noexcept = default;
@@ -158,7 +49,7 @@ namespace pixel {
       }
 
       constexpr static auto num_channels() noexcept -> std::size_t {
-        return colorspace::num_channels<Tg>();
+        return ColorPalette::CHANNELS;
       }
 
       template <IsArithmetic Up> constexpr void fill(Up &&value) noexcept {
@@ -188,14 +79,16 @@ namespace pixel {
 
     template <IsArithmetic Tp, IsTag T> struct Pixel;
 
-    template <IsArithmetic Tp> struct Pixel<Tp, RGB> : PixelBase<Tp, RGB> {
-      using PixelBase<Tp, RGB>::PixelBase;
+    template <IsArithmetic Tp>
+    struct Pixel<Tp, tags::RGB> : PixelBase<Tp, tags::RGB> {
+      using PixelBase<Tp, tags::RGB>::PixelBase;
+      using ColorPalette = typename PixelBase<Tp, tags::RGB>::ColorPalette;
 
-      constexpr auto r() const -> const Tp & { return (*this)[rgba::R]; }
+      constexpr auto r() const -> const Tp & { return (*this)[ColorPalette::R]; }
 
-      constexpr auto g() const -> const Tp & { return (*this)[rgba::G]; }
+      constexpr auto g() const -> const Tp & { return (*this)[ColorPalette::G]; }
 
-      constexpr auto b() const -> const Tp & { return (*this)[rgba::B]; }
+      constexpr auto b() const -> const Tp & { return (*this)[ColorPalette::B]; }
 
       constexpr auto r() -> Tp & {
         return const_cast<PixelBase<Tp, RGB> *>(*this)->r();
@@ -208,22 +101,28 @@ namespace pixel {
       constexpr auto b() -> Tp & {
         return const_cast<PixelBase<Tp, RGB> *>(*this)->b();
       }
-
-      constexpr static auto num_channels() noexcept -> std::size_t {
-        return colorspace::num_channels<RGB>();
-      }
     };
 
-    template <IsArithmetic Tp> struct Pixel<Tp, RGBA> : PixelBase<Tp, RGBA> {
-      using PixelBase<Tp, RGBA>::PixelBase;
+    template <IsArithmetic Tp>
+    struct Pixel<Tp, tags::RGBA> : PixelBase<Tp, tags::RGBA> {
+      using PixelBase<Tp, tags::RGBA>::PixelBase;
+      using ColorPalette = typename PixelBase<Tp, tags::RGBA>::ColorPalette;
 
-      constexpr auto r() const -> const Tp & { return (*this)[rgba::R]; }
+      constexpr auto r() const -> const Tp & {
+        return (*this)[ColorPalette::R];
+      }
 
-      constexpr auto g() const -> const Tp & { return (*this)[rgba::G]; }
+      constexpr auto g() const -> const Tp & {
+        return (*this)[ColorPalette::G];
+      }
 
-      constexpr auto b() const -> const Tp & { return (*this)[rgba::B]; }
+      constexpr auto b() const -> const Tp & {
+        return (*this)[ColorPalette::B];
+      }
 
-      constexpr auto a() const -> const Tp & { return (*this)[rgba::A]; }
+      constexpr auto a() const -> const Tp & {
+        return (*this)[ColorPalette::A];
+      }
 
       constexpr auto r() -> Tp & {
         return const_cast<PixelBase<Tp, RGBA> *>(*this)->r();
@@ -240,10 +139,6 @@ namespace pixel {
       constexpr auto a() -> Tp & {
         return const_cast<PixelBase<Tp, RGBA> *>(*this)->a();
       }
-
-      constexpr static auto num_channels() noexcept -> std::size_t {
-        return colorspace::num_channels<RGBA>();
-      }
     };
 
     template <std::size_t... Is>
@@ -255,7 +150,7 @@ namespace pixel {
     template <IsArithmetic Tp, IsTag T>
     auto operator<<(std::ostream &out, const Pixel<Tp, T> &pix)
         -> std::ostream & {
-      constexpr auto num_channels = colorspace::num_channels<T>();
+      constexpr auto num_channels = Pixel<Tp, T>::num_channels();
       if constexpr (std::is_floating_point_v<Tp>) {
         std::apply(
             [&out, &pix](auto... ids) {
@@ -279,9 +174,9 @@ namespace pixel {
 
   } // namespace detail
 
-  template <IsArithmetic Tp> using RGBPixel = detail::Pixel<Tp, RGB>;
+  template <IsArithmetic Tp> using RGBPixel = detail::Pixel<Tp, tags::RGB>;
 
-  template <IsArithmetic Tp> using RGBAPixel = detail::Pixel<Tp, RGBA>;
+  template <IsArithmetic Tp> using RGBAPixel = detail::Pixel<Tp, tags::RGBA>;
 
 } // namespace pixel
 

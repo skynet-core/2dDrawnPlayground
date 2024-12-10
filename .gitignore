@@ -37,3 +37,4 @@ build/
 tmp/
 .idea/
 cmake-build-debug/
+*.ppm

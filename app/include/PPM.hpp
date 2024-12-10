@@ -20,6 +20,9 @@ namespace ppm {
   template <IsPPMIntegral Tp>
     requires(sizeof(Tp) <= 2)
   struct Image {
+
+    using Container = std::vector<Pixel<Tp>>;
+
     Image() = default;
     Image(const int width, const int height)
         : pixels_(width * height), width_{width}, height_{height} {}
@@ -38,6 +41,10 @@ namespace ppm {
       pixels_.resize(width * height);
     }
 
+    [[nodiscard]] auto width() const -> int { return width_; }
+
+    [[nodiscard]] auto height() const -> int { return height_; }
+
     void fill(const Pixel<Tp> &color) {
       std::fill(pixels_.begin(), pixels_.end(), color);
     }
@@ -46,15 +53,43 @@ namespace ppm {
       std::fill(pixels_.begin()->begin(), pixels_.end()->end(), value);
     }
 
-    void drawFunc(const std::function<int(int, int)> &func) {
+    void drawFunc(
+        const std::function<void(int xPos, int yPos, Pixel<Tp> &pix)> &func) {
       for (auto xPos = 0; xPos < width_; ++xPos) {
         for (auto yPos = 0; yPos < height_; ++yPos) {
-          const auto val = pixel::color::cast<Tp, double>(
-              pixel::color::normalize<double>(static_cast<Tp>(
-                  func(xPos, yPos) % std::numeric_limits<Tp>::max())));
-          this->pixels_[xPos + (yPos * width_)] = Pixel<Tp>{val, val, val};
+          func(xPos, yPos, this->pixels_[xPos + (yPos * width_)]);
         }
       }
+    }
+
+    [[nodiscard]] auto begin() const -> Container::const_iterator {
+      return pixels_.cbegin();
+    }
+
+    [[nodiscard]] auto end() const -> Container::const_iterator {
+      return pixels_.cend();
+    }
+
+    [[nodiscard]] auto crbegin() const -> Container::const_reverse_iterator {
+      return pixels_.rbegin();
+    }
+
+    [[nodiscard]] auto crend() const -> Container::const_reverse_iterator {
+      return pixels_.crend();
+    }
+
+    [[nodiscard]] auto begin() -> Container::iterator {
+      return pixels_.begin();
+    }
+
+    [[nodiscard]] auto end() -> Container::iterator { return pixels_.end(); }
+
+    [[nodiscard]] auto rbegin() -> Container::reverse_iterator {
+      return pixels_.rbegin();
+    }
+
+    [[nodiscard]] auto rend() -> Container::reverse_iterator {
+      return pixels_.rend();
     }
 
     auto save(const path &fileName) -> bool {
@@ -83,7 +118,7 @@ namespace ppm {
       }
     }
 
-    std::vector<Pixel<Tp>> pixels_{};
+    Container pixels_{};
     int width_{}, height_{};
   };
 } // namespace ppm
