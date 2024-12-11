@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <random>
 #include <string>
 #include <unordered_map>
-#include <random>
 
 import Generators;
 import Image.Ppm;
@@ -42,6 +42,8 @@ namespace {
 } // namespace
 
 auto main(int argc, char **argv) -> int {
+  const auto &functions = getFunctionsRegistry();
+
   std::size_t width{};
   std::size_t height{};
   std::string outFile{};
@@ -60,7 +62,6 @@ auto main(int argc, char **argv) -> int {
       ->default_val("bit_xor"s);
 
   CLI11_PARSE(app, argc, argv);
-  noise::Generator generator{std::random_device{}(), {width, height, 0.0, 1.0}};
   ppm::Image<uint8_t> image{};
   if (!inFile.empty()) {
     if (image.load(inFile)) {
@@ -71,24 +72,19 @@ auto main(int argc, char **argv) -> int {
     image.resize(width, height);
   }
 
+  const auto func = functions.find(funcName);
+  if (func != functions.end()) {
+    std::cout << "Using function: " << funcName << '\n';
+    image.drawFunc(func->second);
+    if (!image.save(outFile)) {
+      std::cerr << "Failed to save image\n";
+    }
+  }
+
   if (!image.save(outFile)) {
     std::cerr << "Failed to save image\n";
     return -2;
   }
-
-  // const auto &functions = getFunctionsRegistry();
-  // auto func = functions.find(funcName);
-  // if (func == functions.end()) {
-  //   std::cerr << "Unknown function: " << funcName << '\n';
-  //   return 1;
-  // }
-  // std::cerr << "Using function: " << funcName << '\n';
-  // ppm::Image<uint8_t> image{};
-  // image.resize(width, height);
-  // image.drawFunc(func->second);
-  // if (!image.save(outFile)) {
-  //   std::cerr << "Failed to save image\n";
-  // }
 
   return 0;
 }

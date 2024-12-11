@@ -10,9 +10,9 @@ module;
 #include <vector>
 
 export module Image.Ppm;
+export import Pixel;
 
 import Contracts;
-import Pixel;
 import Operators;
 
 namespace ppm {
