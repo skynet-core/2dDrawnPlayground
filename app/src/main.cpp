@@ -1,4 +1,3 @@
-#include "include/PPM.hpp"
 #include <CLI/CLI.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -6,13 +5,16 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <random>
+
+import Generators;
+import Image.Ppm;
 
 using namespace std::string_literals;
 using namespace pixel;
 
-const auto DEFAULT_WIDTH = 512U;
-const auto DEFAULT_HEIGHT = 512U;
-const auto NUMBITS = 8U;
+constexpr auto DEFAULT_WIDTH = 512U;
+constexpr auto DEFAULT_HEIGHT = 512U;
 
 namespace {
   using DrawFuncT =
@@ -30,7 +32,7 @@ namespace {
   }
 
   auto getFunctionsRegistry() -> const RegistryT & {
-    static RegistryT functions{
+    static RegistryT const functions{
         {"bit_xor"s, makeDrawFuncWithBinaryOp(std::bit_xor<>{})},
         {"bit_and"s, makeDrawFuncWithBinaryOp(std::bit_and<>{})},
         {"bit_or"s, makeDrawFuncWithBinaryOp(std::bit_or<>{})},
@@ -43,6 +45,7 @@ auto main(int argc, char **argv) -> int {
   std::size_t width{};
   std::size_t height{};
   std::string outFile{};
+  std::string inFile{};
   std::string funcName{};
 
   CLI::App app{"2D Drawing playground"s};
@@ -52,24 +55,40 @@ auto main(int argc, char **argv) -> int {
       ->default_val(DEFAULT_HEIGHT);
   app.add_option("-o,--output"s, outFile, "Output file name"s)
       ->default_val("output.ppm"s);
+  app.add_option("-i,--input"s, inFile, "Input file name"s);
   app.add_option("-f,--function"s, funcName, "Function name"s)
       ->default_val("bit_xor"s);
 
   CLI11_PARSE(app, argc, argv);
-
-  const auto &functions = getFunctionsRegistry();
-  auto func = functions.find(funcName);
-  if (func == functions.end()) {
-    std::cerr << "Unknown function: " << funcName << '\n';
-    return 1;
-  }
-  std::cerr << "Using function: " << funcName << '\n';
+  noise::Generator generator{std::random_device{}(), {width, height, 0.0, 1.0}};
   ppm::Image<uint8_t> image{};
-  image.resize(width, height);
-  image.drawFunc(func->second);
+  if (!inFile.empty()) {
+    if (image.load(inFile)) {
+      std::cerr << "Failed to load image\n";
+      return -1;
+    }
+  } else {
+    image.resize(width, height);
+  }
+
   if (!image.save(outFile)) {
     std::cerr << "Failed to save image\n";
+    return -2;
   }
+
+  // const auto &functions = getFunctionsRegistry();
+  // auto func = functions.find(funcName);
+  // if (func == functions.end()) {
+  //   std::cerr << "Unknown function: " << funcName << '\n';
+  //   return 1;
+  // }
+  // std::cerr << "Using function: " << funcName << '\n';
+  // ppm::Image<uint8_t> image{};
+  // image.resize(width, height);
+  // image.drawFunc(func->second);
+  // if (!image.save(outFile)) {
+  //   std::cerr << "Failed to save image\n";
+  // }
 
   return 0;
 }

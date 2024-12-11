@@ -1,11 +1,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "include/Literals.hpp"
-#include "include/Normalization.hpp"
 #include <cstdint>
 #include <doctest/doctest.h>
 
-using namespace color::color_literals;
+import Literals;
+import ColorUtilities;
+
+using namespace color_literals;
 
 TEST_CASE("Color Normalization") {
 

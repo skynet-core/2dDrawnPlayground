@@ -1,10 +1,10 @@
-#ifndef PALETTE_HPP
-#define PALETTE_HPP
+module;
+export module Palette;
 
 namespace palette {
   namespace tags {
-    struct RGB;
-    struct RGBA;
+    export struct RGB;
+    export struct RGBA;
 
     namespace traits {
       template <typename> struct is_tag_ {
@@ -21,20 +21,20 @@ namespace palette {
   } // namespace tags
 
   inline namespace concepts {
-    template <typename Tp>
+    export template <typename Tp>
     concept IsTag = tags::traits::is_tag_v<Tp>;
   } // namespace concepts
 
-  template <IsTag Tg> struct Palette;
+  export template <IsTag Tg> struct Palette;
 
-  template <> struct Palette<tags::RGB> {
+  export template <> struct Palette<tags::RGB> {
     static constexpr auto R = 0;        // NOLINT
     static constexpr auto G = 1;        // NOLINT
     static constexpr auto B = 2;        // NOLINT
     static constexpr auto CHANNELS = 3; // NOLINT
   };
 
-  template <> struct Palette<tags::RGBA> {
+  export template <> struct Palette<tags::RGBA> {
     static constexpr auto R = 0;        // NOLINT
     static constexpr auto G = 1;        // NOLINT
     static constexpr auto B = 2;        // NOLINT
@@ -42,9 +42,7 @@ namespace palette {
     static constexpr auto CHANNELS = 4; // NOLINT
   };
 
-  using RGB = Palette<tags::RGB>;
-  using RGBA = Palette<tags::RGBA>;
+  export using RGB = Palette<tags::RGB>;
+  export using RGBA = Palette<tags::RGBA>;
 
 } // namespace palette
-
-#endif

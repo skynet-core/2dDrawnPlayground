@@ -1,28 +1,37 @@
-#ifndef PPM_HPP
-#define PPM_HPP
+module;
 
-#include "Pixel.hpp"
+#include <climits>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <string>
+#include <system_error>
 #include <vector>
+
+export module Image.Ppm;
+
+import Contracts;
+import Pixel;
+import Operators;
 
 namespace ppm {
   using namespace std::filesystem;
+  using namespace std::string_literals;
 
   template <typename T>
   concept IsPPMIntegral =
       contracts::IsIntegral<T> &&
       std::numeric_limits<T>::max() <= std::numeric_limits<uint16_t>::max();
 
-  template <IsPPMIntegral T> using Pixel = pixel::RGBPixel<T>;
+  export template <IsPPMIntegral T> using Pixel = pixel::RGBPixel<T>;
 
-  template <IsPPMIntegral Tp>
+  export template <IsPPMIntegral Tp>
     requires(sizeof(Tp) <= 2)
   struct Image {
 
     using Container = std::vector<Pixel<Tp>>;
+    constexpr static auto MAGIC{"P3"};
 
     Image() = default;
     Image(std::size_t width, std::size_t height)
@@ -64,40 +73,44 @@ namespace ppm {
       }
     }
 
-    [[nodiscard]] auto begin() const -> Container::const_iterator {
+    [[nodiscard]] auto begin() const -> typename Container::const_iterator {
       return pixels_.cbegin();
     }
 
-    [[nodiscard]] auto end() const -> Container::const_iterator {
+    [[nodiscard]] auto end() const -> typename Container::const_iterator {
       return pixels_.cend();
     }
 
-    [[nodiscard]] auto crbegin() const -> Container::const_reverse_iterator {
+    [[nodiscard]] auto crbegin() const ->
+        typename Container::const_reverse_iterator {
       return pixels_.rbegin();
     }
 
-    [[nodiscard]] auto crend() const -> Container::const_reverse_iterator {
+    [[nodiscard]] auto crend() const ->
+        typename Container::const_reverse_iterator {
       return pixels_.crend();
     }
 
-    [[nodiscard]] auto begin() -> Container::iterator {
+    [[nodiscard]] auto begin() -> typename Container::iterator {
       return pixels_.begin();
     }
 
-    [[nodiscard]] auto end() -> Container::iterator { return pixels_.end(); }
+    [[nodiscard]] auto end() -> typename Container::iterator {
+      return pixels_.end();
+    }
 
-    [[nodiscard]] auto rbegin() -> Container::reverse_iterator {
+    [[nodiscard]] auto rbegin() -> typename Container::reverse_iterator {
       return pixels_.rbegin();
     }
 
-    [[nodiscard]] auto rend() -> Container::reverse_iterator {
+    [[nodiscard]] auto rend() -> typename Container::reverse_iterator {
       return pixels_.rend();
     }
 
     auto save(const path &fileName) -> bool {
       ensureParentPath(fileName);
       if (std::ofstream file{fileName, std::ios::out | std::ios::trunc}; file) {
-        file << "P3\n"
+        file << MAGIC << "\n"
              << width_ << ' ' << height_ << '\n'
              << static_cast<int>(std::numeric_limits<Tp>::max()) << '\n';
 
@@ -112,7 +125,59 @@ namespace ppm {
       return false;
     }
 
+    auto load(const path &fileName) -> std::error_code {
+      if (std::ifstream file{fileName, std::ios::in}; file) {
+        std::string magic;
+        std::size_t width{};
+        std::size_t height{};
+        std::size_t max{};
+        file >> magic >> width >> height >> max;
+        if (magic != std::string{MAGIC}) {
+          return std::error_code{EINVAL, std::generic_category()};
+        }
+        resize(width, height);
+        std::function<Tp(int, std::size_t)> operation = bits::NoOp{};
+        auto shift{0};
+        if (max > std::numeric_limits<Tp>::max()) {
+          shift = calculateBitShiftRight(max, std::numeric_limits<Tp>::max());
+          operation = bits::ShiftRight{};
+        }
+        if (max < std::numeric_limits<Tp>::max()) {
+          shift = calculateBitShiftLeft(max, std::numeric_limits<Tp>::max());
+          operation = bits::ShiftLeft{};
+        }
+
+        int redColor{};
+        int greenColor{};
+        int blueColor{};
+        for (auto &pixel : pixels_) {
+          file >> redColor >> greenColor >> blueColor;
+          pixel = Pixel<Tp>{operation(redColor, shift),
+                            operation(greenColor, shift),
+                            operation(blueColor, shift)};
+        }
+        return {};
+      }
+      return std::error_code{ENOENT, std::generic_category()};
+    }
+
   private:
+    constexpr static auto calculateBitShiftRight(long long max, long long min) {
+      std::size_t shift{0};
+      while (max >> shift > min) {
+        shift += CHAR_BIT;
+      }
+      return shift;
+    }
+
+    constexpr static auto calculateBitShiftLeft(long long min, long long max) {
+      std::size_t shift{0};
+      while (min << shift > max) {
+        shift += CHAR_BIT;
+      }
+      return shift;
+    }
+
     static void ensureParentPath(const path &path) {
       if (path.has_parent_path()) {
         std::error_code code;
@@ -125,5 +190,3 @@ namespace ppm {
     std::size_t height_{};
   };
 } // namespace ppm
-
-#endif

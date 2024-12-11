@@ -1,13 +1,15 @@
-#ifndef PIXEL_HPP
-#define PIXEL_HPP
+module;
 
-#include "Contracts.hpp"
-#include "Normalization.hpp"
-#include "Palette.hpp"
 #include <algorithm>
 #include <array>
-#include <ostream>
 #include <iomanip>
+#include <ostream>
+
+export module Pixel;
+
+import ColorUtilities;
+import Palette;
+import Contracts;
 
 namespace pixel {
   using namespace contracts;
@@ -16,7 +18,7 @@ namespace pixel {
 
   namespace detail {
 
-    template <IsArithmetic Tp, IsTag Tg>
+    export template <IsArithmetic Tp, IsTag Tg>
     struct PixelBase : std::array<Tp, Palette<Tg>::CHANNELS> {
       using ColorPalette = Palette<Tg>;
 
@@ -72,23 +74,29 @@ namespace pixel {
       }
     };
 
-    template <IsArithmetic Tt, IsTag Tg>
+    export template <IsArithmetic Tt, IsTag Tg>
     void swap(PixelBase<Tt, Tg> &lhs, PixelBase<Tt, Tg> &rhs) noexcept {
       lhs.swap(rhs);
     }
 
-    template <IsArithmetic Tp, IsTag T> struct Pixel;
+    export template <IsArithmetic Tp, IsTag T> struct Pixel;
 
-    template <IsArithmetic Tp>
+    export template <IsArithmetic Tp>
     struct Pixel<Tp, tags::RGB> : PixelBase<Tp, tags::RGB> {
       using PixelBase<Tp, tags::RGB>::PixelBase;
       using ColorPalette = typename PixelBase<Tp, tags::RGB>::ColorPalette;
 
-      constexpr auto r() const -> const Tp & { return (*this)[ColorPalette::R]; }
+      constexpr auto r() const -> const Tp & {
+        return (*this)[ColorPalette::R];
+      }
 
-      constexpr auto g() const -> const Tp & { return (*this)[ColorPalette::G]; }
+      constexpr auto g() const -> const Tp & {
+        return (*this)[ColorPalette::G];
+      }
 
-      constexpr auto b() const -> const Tp & { return (*this)[ColorPalette::B]; }
+      constexpr auto b() const -> const Tp & {
+        return (*this)[ColorPalette::B];
+      }
 
       constexpr auto r() -> Tp & {
         return const_cast<PixelBase<Tp, RGB> *>(*this)->r();
@@ -103,7 +111,7 @@ namespace pixel {
       }
     };
 
-    template <IsArithmetic Tp>
+    export template <IsArithmetic Tp>
     struct Pixel<Tp, tags::RGBA> : PixelBase<Tp, tags::RGBA> {
       using PixelBase<Tp, tags::RGBA>::PixelBase;
       using ColorPalette = typename PixelBase<Tp, tags::RGBA>::ColorPalette;
@@ -147,7 +155,7 @@ namespace pixel {
       return std::make_tuple(Is...);
     }
 
-    template <IsArithmetic Tp, IsTag T>
+    export template <IsArithmetic Tp, IsTag T>
     auto operator<<(std::ostream &out, const Pixel<Tp, T> &pix)
         -> std::ostream & {
       constexpr auto num_channels = Pixel<Tp, T>::num_channels();
@@ -174,10 +182,10 @@ namespace pixel {
 
   } // namespace detail
 
-  template <IsArithmetic Tp> using RGBPixel = detail::Pixel<Tp, tags::RGB>;
+  export template <IsArithmetic Tp>
+  using RGBPixel = detail::Pixel<Tp, tags::RGB>;
 
-  template <IsArithmetic Tp> using RGBAPixel = detail::Pixel<Tp, tags::RGBA>;
+  export template <IsArithmetic Tp>
+  using RGBAPixel = detail::Pixel<Tp, tags::RGBA>;
 
 } // namespace pixel
-
-#endif
