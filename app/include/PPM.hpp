@@ -2,6 +2,7 @@
 #define PPM_HPP
 
 #include "Pixel.hpp"
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -24,26 +25,27 @@ namespace ppm {
     using Container = std::vector<Pixel<Tp>>;
 
     Image() = default;
-    Image(const int width, const int height)
+    Image(std::size_t width, std::size_t height)
         : pixels_(width * height), width_{width}, height_{height} {}
 
-    auto operator[](const int xPos, const int yPos) const -> const Pixel<Tp> & {
+    auto operator[](std::size_t xPos, std::size_t yPos) const
+        -> const Pixel<Tp> & {
       return pixels_[xPos + (yPos * width_)];
     }
 
-    auto operator[](const int xPos, const int yPos) -> Pixel<Tp> & {
+    auto operator[](std::size_t xPos, std::size_t yPos) -> Pixel<Tp> & {
       return const_cast<Image &>(*this)->operator[](xPos, yPos);
     }
 
-    void resize(const int width, const int height) {
+    void resize(std::size_t width, std::size_t height) {
       width_ = width;
       height_ = height;
       pixels_.resize(width * height);
     }
 
-    [[nodiscard]] auto width() const -> int { return width_; }
+    [[nodiscard]] auto width() const -> std::size_t { return width_; }
 
-    [[nodiscard]] auto height() const -> int { return height_; }
+    [[nodiscard]] auto height() const -> std::size_t { return height_; }
 
     void fill(const Pixel<Tp> &color) {
       std::fill(pixels_.begin(), pixels_.end(), color);
@@ -53,8 +55,8 @@ namespace ppm {
       std::fill(pixels_.begin()->begin(), pixels_.end()->end(), value);
     }
 
-    void drawFunc(
-        const std::function<void(int xPos, int yPos, Pixel<Tp> &pix)> &func) {
+    void drawFunc(const std::function<void(std::size_t xPos, std::size_t yPos,
+                                           Pixel<Tp> &pix)> &func) {
       for (auto xPos = 0; xPos < width_; ++xPos) {
         for (auto yPos = 0; yPos < height_; ++yPos) {
           func(xPos, yPos, this->pixels_[xPos + (yPos * width_)]);
@@ -119,7 +121,8 @@ namespace ppm {
     }
 
     Container pixels_{};
-    int width_{}, height_{};
+    std::size_t width_{};
+    std::size_t height_{};
   };
 } // namespace ppm
 

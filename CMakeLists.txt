@@ -10,12 +10,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(CLI11 CONFIG REQUIRED)
+
 file(GLOB_RECURSE SOURCES "app/src/*.cpp")
 
 add_executable(app)
 
 target_sources(app PRIVATE ${SOURCES})
 target_include_directories(app PRIVATE "app")
+target_link_libraries(app PRIVATE CLI11::CLI11)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   get_target_property(OLD_CXX_FLAGS app CXX_FLAGS)
   set_target_properties(app PROPERTIES CXX_FLAGS "${OLD_CXX_FLAGS} -O0")

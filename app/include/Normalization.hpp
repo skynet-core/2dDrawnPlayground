@@ -21,23 +21,6 @@ namespace color {
     return static_cast<Tp>(std::round(value * std::numeric_limits<Tp>::max()));
   }
 
-  // template <IsIntegral Rt, IsIntegral It>
-  //   requires(sizeof(Rt) > sizeof(It))
-  // constexpr auto scale(It value) noexcept -> Rt {
-  //   return static_cast<Rt>(static_cast<double>(value) /
-  //                          (1 << sizeof(It) * NUMBITS) *
-  //                          (1 << sizeof(Rt) * NUMBITS)) -
-  //          value;
-  // }
-
-  // template <IsIntegral Rt, IsIntegral It>
-  //   requires(sizeof(Rt) < sizeof(It))
-  // constexpr auto scale(It value) noexcept -> Rt {
-  //   return static_cast<Rt>(
-  //       std::round(static_cast<double>(value) /
-  //                  (1 << NUMBITS * (sizeof(It) - sizeof(Rt)))));
-  // }
-
   template <IsIntegral Rt, IsIntegral It>
     requires(sizeof(Rt) > sizeof(It))
   constexpr auto scale(It value) noexcept -> Rt {
